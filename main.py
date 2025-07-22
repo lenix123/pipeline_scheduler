@@ -1,6 +1,7 @@
 import gitlab
 import time
 from typing import Dict, List
+from datetime import datetime, timedelta
 
 
 class FuzzingPipelineScheduler:
@@ -107,22 +108,29 @@ class FuzzingPipelineScheduler:
 
 
     def schedule_pipelines(self) -> None:
-        """Основной метод планирования запусков"""
-        # Шаг 1: Проверка доступности ресурсов
+        print("Планирование запусков пайплайнов...")
+
+        # Шаг 1: Проверка доступности раннеров
         available_runners = self.get_available_runners()
         if not available_runners:
             print("Нет доступных раннеров. Пропуск цикла планирования.")
             return
-        
-        # Шаг 2: Получение проектов для анализа
+
+        # Шаг 2: Получение проектов
         projects = self.get_fuzzing_projects()
-        
-        # TODO: Реализовать логику приоритезации
-        # prioritized_projects = self.prioritize_projects(projects)
-        
-        # TODO: Реализовать запуск пайплайнов
+        if not projects:
+            print("Нет доступных проектов в группе.")
+            return
+
+        # Шаг 3: Приоритезация проектов
+        prioritized_projects = self.prioritize_projects(projects)
+        if not prioritized_projects:
+            print("Нет проектов, удовлетворяющих условиям для запуска.")
+            return
+
+        # Шаг 4: Запуск пайплайнов
         # self.run_pipelines(prioritized_projects, available_runners)
-        
+
         print("Планирование завершено (логика приоритезации будет реализована в следующей версии)")
 
 if __name__ == "__main__":
