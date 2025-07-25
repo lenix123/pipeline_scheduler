@@ -3,6 +3,8 @@ import time
 from typing import Dict, List
 from datetime import datetime, timedelta
 
+import requests
+
 
 class FuzzingPipelineScheduler:
     def __init__(self, gitlab_url: str, private_token: str, group_id: int):
@@ -23,6 +25,23 @@ class FuzzingPipelineScheduler:
         }
 
     def get_available_runners(self) -> List[Dict]:
+        available_runners = []
+        url = f"{self.gitlab_url}/api/v4/groups/{self.group_id}/runners"
+        page = 1
+
+        while True:
+            response = requests.get(url, headers=self.headers, params={'per_page': 100, 'page': page})
+            if response.status_code != 200:
+                raise Exception(f"GitLab API error: {response.status_code} - {response.text}")
+
+            data = response.json()
+            if not data:
+                break
+
+            available_runners.extend(data)
+            page += 1
+
+        return available_runners
         """Получение списка доступных раннеров для группы"""
         available_runners = []
 
