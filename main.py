@@ -37,9 +37,22 @@ class FuzzingPipelineScheduler:
             'defects': 0.4
         }
 
-    def get_available_runners(self) -> List[ProjectInfo]:
-        """Получение списка доступных раннеров для группы"""
+    def get_available_runners(self) -> List[Dict]:
         available_runners = []
+        url = f"{self.gitlab_url}/api/v4/groups/{self.group_id}/runners"
+        page = 1
+
+        while True:
+            response = requests.get(url, headers=self.headers, params={'per_page': 100, 'page': page})
+            if response.status_code != 200:
+                raise Exception(f"GitLab API error: {response.status_code} - {response.text}")
+
+            data = response.json()
+            if not data:
+                break
+
+            available_runners.extend(data)
+            page += 1
 
         return available_runners
 
