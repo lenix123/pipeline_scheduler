@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import gitlab
 from typing import List, Optional
 from datetime import datetime, timedelta
+import requests
 
 @dataclass
 class ProjectInfo:
@@ -109,9 +110,42 @@ class FuzzingPipelineScheduler:
         """Проверка, готов ли проект к запуску пайплайна"""
         return project.main_branch_exists and project.has_gitlab_ci_file
 
-    def get_defect_count(self, project: ProjectInfo) -> int:
-        """Получение дефектов из Dojo"""
-        return 0
+    def get_defect_count(self, project: Dict) -> int:
+        """
+        Получение количества открытых дефектов из DefectDojo для проекта.
+        Выполняется только если настроен API токен DefectDojo.
+        """
+        if not self.defectdojo_url or not self.defectdojo_token:
+            # Пропускаем, если не задана интеграция
+            return 0 
+    
+        try:
+            headers = {
+                'Authorization': f'Token {self.defectdojo_token}',
+                'Content-Type': 'application/json',
+            }
+    
+            search_url = f"{self.defectdojo_url}/api/v2/products/?name={project['name']}"
+            response = requests.get(search_url, headers=headers, timeout=5)
+            response.raise_for_status()
+    
+            products = response.json().get('results', [])
+            
+            if not products:
+                return 0
+    
+            product_id = products[0]['id']
+    
+            findings_url = f"{self.defectdojo_url}/api/v2/findings/?product={product_id}&active=true&verified=true&false_p=false&duplicate=false"
+            findings_response = requests.get(findings_url, headers=headers, timeout=5)
+            findings_response.raise_for_status()
+    
+            findings = findings_response.json().get('results', [])
+            return len(findings)
+    
+        except requests.RequestException as e:
+            print(f"[WARN] Не удалось получить данные из DefectDojo для проекта {project['name']}: {e}")
+            return 0
 
     def normalize(self, values: List[float]) -> List[float]:
         """Нормализация значений от 0 до 1"""
